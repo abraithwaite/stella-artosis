@@ -4,7 +4,7 @@ import (
 	"flag"
 	"strings"
 
-	"github.com/gophergala2016/stella-artosis"
+	"github.com/abraithwaite/stella-artosis"
 )
 
 var (
