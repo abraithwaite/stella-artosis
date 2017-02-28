@@ -45,7 +45,24 @@ type File struct {
 func Scan(conf Config) []*File {
 	ret := []*File{}
 	var wg, remaining sync.WaitGroup
-	fn, c := genScan(conf)
+	c := make(chan *File)
+	defer close(c)
+
+	// fn is a filepath.WalkFunc
+	fn := func(path string, info os.FileInfo, err error) error {
+		if skip(path, conf.Ignored) {
+			return nil
+		}
+		if info.IsDir() {
+			return nil
+		}
+		f := &File{
+			Stat: info,
+			Path: path,
+		}
+		c <- f
+		return nil
+	}
 
 	o := make(chan *File)
 	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
@@ -65,7 +82,10 @@ func Scan(conf Config) []*File {
 		fmt.Printf("scanning: %s\n", r)
 		wg.Add(1)
 		go func() {
-			filepath.Walk(r, fn)
+			err := filepath.Walk(r, fn)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error in walking: %v\n", err)
+			}
 			wg.Done()
 		}()
 	}
@@ -78,7 +98,6 @@ func Scan(conf Config) []*File {
 	}()
 	wg.Wait()
 	remaining.Wait()
-	close(c)
 	return ret
 }
 
@@ -104,23 +123,4 @@ func stella(file *File, h hash.Hash, out chan *File) error {
 	out <- file
 	h.Reset()
 	return nil
-}
-
-func genScan(conf Config) (filepath.WalkFunc, chan *File) {
-	c := make(chan *File)
-	ret := func(path string, info os.FileInfo, err error) error {
-		if skip(path, conf.Ignored) {
-			return nil
-		}
-		if info.IsDir() {
-			return nil
-		}
-		f := &File{
-			Stat: info,
-			Path: path,
-		}
-		c <- f
-		return nil
-	}
-	return ret, c
 }
