@@ -32,6 +32,9 @@ type Config struct {
 	Ignored map[string]bool
 	// Hash controls which hahsing algorithm is used.
 	Hash string
+
+	// FollowSymlinks if set indicates to follow symlinks
+	FollowSymlinks bool
 }
 
 type File struct {
@@ -69,6 +72,13 @@ func Scan(conf Config) []*File {
 		h := hashes[conf.Hash]()
 		go func() {
 			for f := range c {
+				mod := f.Stat.Mode()
+				if (mod & (os.ModeDevice | os.ModeNamedPipe | os.ModeSocket)) != 0 {
+					continue
+				}
+				if !conf.FollowSymlinks && (f.Stat.Mode()&os.ModeSymlink != 0) {
+					continue
+				}
 				remaining.Add(1)
 				err := stella(f, h, o)
 				if err != nil {

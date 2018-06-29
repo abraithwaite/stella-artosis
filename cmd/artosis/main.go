@@ -11,14 +11,16 @@ var (
 	ignore  = flag.String("ignore", "/sys,/dev,/proc", "comma separated list of files/directories to ignore")
 	include = flag.String("include", ".", "comma separated list of files/directories to include")
 	hash    = flag.String("hash", "sha1", "which hash to use for analysis")
+	follow  = flag.Bool("s", false, "if set, follow symlinks")
 )
 
 func main() {
 	flag.Parse()
 	c := artosis.Config{
-		Ignored: parseFiles(*ignore),
-		Include: parseFiles(*include),
-		Hash:    *hash,
+		Ignored:        parseFiles(*ignore),
+		Include:        parseFiles(*include),
+		Hash:           *hash,
+		FollowSymlinks: *follow,
 	}
 	artosis.Scan(c)
 }
